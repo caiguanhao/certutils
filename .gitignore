@@ -1,0 +1,6 @@
+*.cert
+*.key
+key.go
+mkcert/mkcert
+getcert/getcert
+upcert/upcert
