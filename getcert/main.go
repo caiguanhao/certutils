@@ -101,7 +101,7 @@ func main() {
 			log.Println(err)
 			continue
 		}
-		err = ioutil.WriteFile(file, content, 0644)
+		err = ioutil.WriteFile(file, content, 0400)
 		if err != nil {
 			log.Println(err)
 		}
