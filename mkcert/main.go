@@ -113,13 +113,14 @@ func main() {
 	log.Println("wait", *wait, "seconds for dns records to take effect")
 	time.Sleep(time.Duration(*wait) * time.Second)
 	c.continueChan <- true
-	<-c.doneChan
 	if !dryRun {
+		log.Println("waiting cert files")
 		cert := copyFileFromContainer(containerId, <-c.pemFileChan)
 		writeFile(targetWithoutWildcard+".cert", cert)
 		key := copyFileFromContainer(containerId, <-c.keyFileChan)
 		writeFile(targetWithoutWildcard+".key", key)
 	}
+	<-c.doneChan
 	removeContainer(containerId)
 	log.Println("done")
 }
@@ -279,6 +280,8 @@ func (c *certbot) start(containerId, acme string) {
 	}
 	if success {
 		log.Println("successfully generated certificates")
+	} else {
+		log.Println("failed to generate certificates")
 	}
 	c.doneChan <- true
 }
