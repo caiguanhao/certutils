@@ -1,14 +1,14 @@
 # certutils
 
-- `mkcert` Generate wildcard SSL certificates and update Aliyun DNS records automatically.
-- `upcert` Upload and encrypt cert files to OSS.
-- `getcert` Download and decrypt encrypted cert files on OSS.
+- `mkcert` Generate wildcard SSL certificates automatically. It helps you set up TXT DNS records on Alidns or Cloudflare.
+- `upcert` Upload and encrypt cert files to Aliyun OSS.
+- `getcert` Download and decrypt encrypted cert files on Aliyun OSS.
 
 You can run `go run generate_key.go` to generate `key.go` for upcert and getcert.
 
 ## mkcert
 
-You must have installed:
+Make sure you have installed:
 
 - [aliyun-cli](https://github.com/aliyun/aliyun-cli) and/or [cloudflare](https://github.com/caiguanhao/cloudflare)
 - docker
