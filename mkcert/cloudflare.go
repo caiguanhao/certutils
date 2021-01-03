@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"os/exec"
 	"strings"
@@ -77,7 +76,6 @@ func (_ cloudflare) addNewRecord(domain, dname, dtype, dvalue string) string {
 }
 
 func (_ cloudflare) deleteRecord(domain, id string) {
-	fmt.Println("cloudflare", "delrecord", domain, id)
 	cmd := exec.Command("cloudflare", "delrecord", domain, id)
 	_, err := cmd.Output()
 	if err != nil {
