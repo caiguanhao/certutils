@@ -44,7 +44,19 @@ Note: You may be [rate-limited](https://letsencrypt.org/docs/rate-limits/) if yo
 2021/01/04 02:22:04 successfully generated certificates
 2021/01/04 02:22:04 removing container e7378c26
 2021/01/04 02:22:04 done
+
 ➜ upcert example.com.*
 2021/01/04 02:22:23 uploaded example.com.cert
 2021/01/04 02:22:23 uploaded example.com.key
+
+➜ getcert
+2021/01/04 11:08:40 getting list of certs
+1. example.com{.cert,.key}       4. foobar.com{.cert,.key}        7. helloworld.com{.cert,.key}
+2. example.net{.cert,.key}       5. foobar.net{.cert,.key}
+3. example.org{.cert,.key}       6. foobar.org{.cert,.key}
+Enter numbers (separated by comma) to choose files: 1
+2021/01/04 11:08:58 downloading example.com.cert
+2021/01/04 11:08:58 written example.com.cert
+2021/01/04 11:08:58 downloading example.com.key
+2021/01/04 11:08:58 written example.com.key
 ```
