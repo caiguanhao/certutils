@@ -10,7 +10,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -25,6 +27,8 @@ var (
 	ossBucket          string
 
 	force bool
+
+	suffixes = []string{".cert", ".key"}
 )
 
 const (
@@ -47,8 +51,36 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		for i, f := range result.Files {
-			fmt.Printf("%d. %s\n", i+1, f.Name[len(certsDir):])
+		names := []string{}
+		combined := map[string][]string{}
+		for _, f := range result.Files {
+			for _, s := range suffixes {
+				if strings.HasSuffix(f.Name, s) {
+					name := strings.TrimSuffix(f.Name[len(certsDir):], s)
+					if _, ok := combined[name]; !ok {
+						names = append(names, name)
+					}
+					combined[name] = append(combined[name], s)
+				}
+			}
+		}
+		sort.Strings(names)
+		cmd := exec.Command("column")
+		cmd.Stdout = os.Stdout
+		stdin, err := cmd.StdinPipe()
+		if err == nil {
+			go func() {
+				defer stdin.Close()
+				for i, name := range names {
+					fmt.Fprintf(stdin, "%d. %s{%s}\n", i+1, name, strings.Join(combined[name], ","))
+				}
+			}()
+			err = cmd.Run()
+		}
+		if err != nil {
+			for i, name := range names {
+				fmt.Printf("%d. %s{%s}\n", i+1, name, strings.Join(combined[name], ","))
+			}
 		}
 		var selected []int
 		for len(selected) == 0 {
@@ -66,7 +98,7 @@ func main() {
 				if err != nil {
 					continue
 				}
-				if num < 1 || num > len(result.Files) {
+				if num < 1 || num > len(names) {
 					continue
 				}
 				for _, s := range selected {
@@ -78,7 +110,9 @@ func main() {
 			}
 		}
 		for _, s := range selected {
-			targets = append(targets, result.Files[s-1].Name)
+			for _, suffix := range combined[names[s-1]] {
+				targets = append(targets, names[s-1]+suffix)
+			}
 		}
 	}
 	for _, t := range targets {
@@ -101,7 +135,7 @@ func main() {
 			log.Println(err)
 			continue
 		}
-		err = ioutil.WriteFile(file, content, 0400)
+		err = ioutil.WriteFile(file, content, 0600)
 		if err != nil {
 			log.Println(err)
 		}
@@ -129,6 +163,9 @@ func canWrite(path string) bool {
 			return false
 		}
 		input = strings.ToLower(strings.TrimSpace(input))
+		if input == "" {
+			input = "n"
+		}
 	}
 	return input == "y"
 }
