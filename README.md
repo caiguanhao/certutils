@@ -14,6 +14,8 @@ Make sure you have installed:
 - docker
 - docker pull certbot/certbot
 
+Note: You may be [rate-limited](https://letsencrypt.org/docs/rate-limits/) if you are going to make many certs with the same IP address.
+
 ## Usage
 
 ```
