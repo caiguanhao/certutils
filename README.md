@@ -18,6 +18,8 @@ Note: You may be [rate-limited](https://letsencrypt.org/docs/rate-limits/) if yo
 
 ## Usage
 
+![certutils](https://user-images.githubusercontent.com/1284703/112626352-0ca95180-8e6b-11eb-8eeb-c55930fc1efa.gif)
+
 ```
 ➜ mkcert "*.example.com"
 2021/01/04 02:21:39 root domain: example.com
