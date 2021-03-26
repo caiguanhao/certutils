@@ -5,8 +5,11 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/x509"
+	"encoding/pem"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -15,6 +18,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/caiguanhao/ossslim"
 )
@@ -26,9 +31,12 @@ var (
 	ossPrefix          string
 	ossBucket          string
 
-	force bool
+	force     bool
+	showDates bool
 
 	suffixes = []string{".cert", ".key"}
+
+	client ossslim.Client
 )
 
 const (
@@ -37,14 +45,15 @@ const (
 
 func main() {
 	flag.BoolVar(&force, "f", false, "overwrite existing file")
+	flag.BoolVar(&showDates, "d", false, "display expiration dates")
 	flag.Parse()
-	targets := flag.Args()
-	client := ossslim.Client{
+	client = ossslim.Client{
 		AccessKeyId:     ossAccessKeyId,
 		AccessKeySecret: ossAccessKeySecret,
 		Prefix:          ossPrefix,
 		Bucket:          ossBucket,
 	}
+	targets := flag.Args()
 	if len(targets) == 0 {
 		log.Println("getting list of certs")
 		result, err := client.List(certsDir, false)
@@ -65,22 +74,35 @@ func main() {
 			}
 		}
 		sort.Strings(names)
+
+		var notAfters *sync.Map
+		if showDates {
+			notAfters = getNotAfters(names)
+		}
+
+		printTo := func(w io.Writer) {
+			for i, name := range names {
+				var extra string
+				if notAfters != nil {
+					if notAfter, ok := notAfters.Load(name); ok {
+						extra = " - " + notAfter.(string)
+					}
+				}
+				fmt.Fprintf(w, "%d. %s{%s}%s\n", i+1, name, strings.Join(combined[name], ","), extra)
+			}
+		}
 		cmd := exec.Command("column")
 		cmd.Stdout = os.Stdout
 		stdin, err := cmd.StdinPipe()
 		if err == nil {
 			go func() {
 				defer stdin.Close()
-				for i, name := range names {
-					fmt.Fprintf(stdin, "%d. %s{%s}\n", i+1, name, strings.Join(combined[name], ","))
-				}
+				printTo(stdin)
 			}()
 			err = cmd.Run()
 		}
 		if err != nil {
-			for i, name := range names {
-				fmt.Printf("%d. %s{%s}\n", i+1, name, strings.Join(combined[name], ","))
-			}
+			printTo(os.Stdout)
 		}
 		var selected []int
 		for len(selected) == 0 {
@@ -185,4 +207,53 @@ func decrypt(content []byte) ([]byte, error) {
 	nonce, ciphertext := content[:nonceSize], content[nonceSize:]
 
 	return aesgcm.Open(nil, nonce, ciphertext, nil)
+}
+
+func getNotAfter(name string) (string, error) {
+	var buffer bytes.Buffer
+	_, err := client.Download(certsDir+name+".cert", &buffer)
+	if err != nil {
+		return "", err
+	}
+	content, err := decrypt(buffer.Bytes())
+	if err != nil {
+		return "", err
+	}
+	block, _ := pem.Decode(content)
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return "", err
+	}
+	days := int(time.Until(cert.NotAfter).Hours() / 24)
+	return fmt.Sprintf("%s (%d days)", cert.NotAfter.Format("2006-01-02"), days), nil
+}
+
+func getNotAfters(names []string) *sync.Map {
+	var notAfters sync.Map
+	log.Println("getting expiration dates of certs")
+	jobs := make(chan string)
+	go func() {
+		defer close(jobs)
+		for _, name := range names {
+			jobs <- name
+		}
+	}()
+	concurrency := 5
+	var wg sync.WaitGroup
+	wg.Add(concurrency)
+	for i := 0; i < concurrency; i++ {
+		go func() {
+			defer wg.Done()
+			for name := range jobs {
+				notAfter, err := getNotAfter(name)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+				notAfters.Store(name, notAfter)
+			}
+		}()
+	}
+	wg.Wait()
+	return &notAfters
 }
