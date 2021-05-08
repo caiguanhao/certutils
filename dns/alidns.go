@@ -1,4 +1,4 @@
-package main
+package dns
 
 import (
 	"encoding/json"
@@ -7,10 +7,12 @@ import (
 )
 
 type (
-	alidns struct{}
+	Alidns struct{}
 )
 
-func (_ alidns) getListOfDomains() []string {
+var _ DNS = (*Alidns)(nil)
+
+func (_ Alidns) GetListOfDomains() []string {
 	cmd := exec.Command("aliyun", "alidns", "DescribeDomains")
 	out, err := cmd.Output()
 	if err != nil {
@@ -35,7 +37,7 @@ func (_ alidns) getListOfDomains() []string {
 	return domains
 }
 
-func (_ alidns) getRecordIdsFor(domain, dname, dtype string) []string {
+func (_ Alidns) GetRecordIdsFor(domain, dname, dtype string) []string {
 	cmd := exec.Command("aliyun", "alidns", "DescribeDomainRecords", "--DomainName", domain)
 	out, err := cmd.Output()
 	if err != nil {
@@ -63,7 +65,7 @@ func (_ alidns) getRecordIdsFor(domain, dname, dtype string) []string {
 	return ids
 }
 
-func (_ alidns) addNewRecord(domain, dname, dtype, dvalue string) string {
+func (_ Alidns) AddNewRecord(domain, dname, dtype, dvalue string) string {
 	cmd := exec.Command("aliyun", "alidns", "AddDomainRecord", "--DomainName", domain,
 		"--RR", dname, "--Type", dtype, "--Value", dvalue)
 	out, err := cmd.Output()
@@ -80,7 +82,7 @@ func (_ alidns) addNewRecord(domain, dname, dtype, dvalue string) string {
 	return result.RecordId
 }
 
-func (_ alidns) deleteRecord(domain, id string) {
+func (_ Alidns) DeleteRecord(domain, id string) {
 	cmd := exec.Command("aliyun", "alidns", "DeleteDomainRecord", "--RecordId", id)
 	out, err := cmd.Output()
 	if err != nil {

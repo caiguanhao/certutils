@@ -11,21 +11,14 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/caiguanhao/certutils/dns"
 )
 
 var (
 	debug  bool
 	dryRun bool
 	email  string
-)
-
-type (
-	dns interface {
-		getListOfDomains() []string
-		getRecordIdsFor(domain, dname, dtype string) []string
-		addNewRecord(domain, dname, dtype, dvalue string) string
-		deleteRecord(domain, id string)
-	}
 )
 
 func main() {
@@ -46,18 +39,18 @@ func main() {
 		log.Fatal("domain name should contain one *. prefix")
 	}
 
-	var client dns
+	var client dns.DNS
 	if *dnsType == "alidns" {
-		client = alidns{}
+		client = dns.Alidns{}
 	} else if *dnsType == "cloudflare" {
-		client = cloudflare{}
+		client = dns.Cloudflare{}
 	} else {
 		log.Fatal("bad dns type")
 	}
 
 	targetWithoutWildcard := strings.TrimPrefix(target, "*.")
 	acme := strings.Replace(target, "*", "_acme-challenge", 1)
-	domains := client.getListOfDomains()
+	domains := client.GetListOfDomains()
 	root := ""
 	for _, domain := range domains {
 		if strings.HasSuffix(target, domain) {
@@ -73,9 +66,9 @@ func main() {
 	log.Println("root domain:", root)
 
 	if *clean {
-		for _, id := range client.getRecordIdsFor(root, acmeWithoutRoot, "TXT") {
+		for _, id := range client.GetRecordIdsFor(root, acmeWithoutRoot, "TXT") {
 			log.Println("deleting TXT record with id", id)
-			client.deleteRecord(root, id)
+			client.DeleteRecord(root, id)
 		}
 		return
 	}
@@ -85,14 +78,14 @@ func main() {
 	log.Println("created container:", containerId)
 
 	log.Println("finding TXT records for", acmeWithoutRoot)
-	ids := client.getRecordIdsFor(root, acmeWithoutRoot, "TXT")
+	ids := client.GetRecordIdsFor(root, acmeWithoutRoot, "TXT")
 	if len(ids) == 0 {
 		log.Println("no TXT records for", acmeWithoutRoot, "yet!")
 	} else {
 		log.Println("found", len(ids), "TXT records for", acmeWithoutRoot)
 		for _, id := range ids {
 			log.Println("deleting TXT record with id", id)
-			client.deleteRecord(root, id)
+			client.DeleteRecord(root, id)
 		}
 	}
 
@@ -107,7 +100,7 @@ func main() {
 	for _, challenge := range challenges {
 		log.Println("received certbot's acme challenge:", challenge)
 		log.Println("creating new TXT record")
-		id := client.addNewRecord(root, acmeWithoutRoot, "TXT", challenge)
+		id := client.AddNewRecord(root, acmeWithoutRoot, "TXT", challenge)
 		log.Println("new record has been created, id:", id)
 	}
 	log.Println("wait", *wait, "seconds for dns records to take effect")
