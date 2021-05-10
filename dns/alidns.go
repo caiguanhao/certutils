@@ -37,6 +37,42 @@ func (_ Alidns) GetListOfDomains() []string {
 	return domains
 }
 
+func (_ Alidns) GetRecords(domain string) (records []Record) {
+	cmd := exec.Command("aliyun", "alidns", "DescribeDomainRecords", "--DomainName", domain)
+	out, err := cmd.Output()
+	if err != nil {
+		log.Fatal(err)
+	}
+	var result struct {
+		DomainRecords struct {
+			Record []struct {
+				RecordId string
+				RR       string
+				Type     string
+				Value    string
+			}
+		}
+	}
+	err = json.Unmarshal(out, &result)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, d := range result.DomainRecords.Record {
+		fullName := domain
+		if d.RR != "@" {
+			fullName = d.RR + "." + fullName
+		}
+		records = append(records, Record{
+			Id:       d.RecordId,
+			Type:     d.Type,
+			Name:     d.RR,
+			FullName: fullName,
+			Content:  d.Value,
+		})
+	}
+	return
+}
+
 func (_ Alidns) GetRecordIdsFor(domain, dname, dtype string) []string {
 	cmd := exec.Command("aliyun", "alidns", "DescribeDomainRecords", "--DomainName", domain)
 	out, err := cmd.Output()

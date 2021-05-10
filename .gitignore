@@ -1,6 +1,7 @@
 *.cert
 *.key
 key.go
+chkcert/chkcert
 mkcert/mkcert
 getcert/getcert
 upcert/upcert

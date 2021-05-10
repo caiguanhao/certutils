@@ -34,6 +34,38 @@ func (_ Cloudflare) GetListOfDomains() []string {
 	return domains
 }
 
+func (_ Cloudflare) GetRecords(domain string) (records []Record) {
+	cmd := exec.Command("cloudflare", "--raw", "records", domain)
+	out, err := cmd.Output()
+	if err != nil {
+		log.Fatal(err)
+	}
+	var result []struct {
+		Id      string `json:"id"`
+		Type    string `json:"type"`
+		Name    string `json:"name"`
+		Content string `json:"content"`
+	}
+	err = json.Unmarshal(out, &result)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, d := range result {
+		name := strings.TrimSuffix(strings.TrimSuffix(d.Name, domain), ".")
+		if name == "" {
+			name = "@"
+		}
+		records = append(records, Record{
+			Id:       d.Id,
+			Type:     d.Type,
+			Name:     name,
+			FullName: d.Name,
+			Content:  d.Content,
+		})
+	}
+	return
+}
+
 func (_ Cloudflare) GetRecordIdsFor(domain, dname, dtype string) []string {
 	cmd := exec.Command("cloudflare", "--raw", "records", domain)
 	out, err := cmd.Output()
