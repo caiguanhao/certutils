@@ -41,6 +41,18 @@ var (
 
 func main() {
 	dnsType := flag.String("dns", "alidns", "can be alidns, cloudflare")
+	flag.Usage = func() {
+		fmt.Println("Usage of chkcert [OPTIONS] [PATTERNS...]")
+		fmt.Println(`
+  This utility makes TLS connections to all your domains, checks the
+  certificates' expiration dates and lists how many days left until expiration
+  date.
+
+PATTERNS: Optional. Only check domains contains one of specific strings.
+
+Options:`)
+		flag.PrintDefaults()
+	}
 	flag.Parse()
 
 	var client dns.DNS
@@ -52,20 +64,34 @@ func main() {
 		log.Fatal("bad dns type")
 	}
 
+	patterns := flag.Args()
+	match := func(name string) bool {
+		if len(patterns) == 0 {
+			return true
+		}
+		for _, pattern := range patterns {
+			if strings.Contains(name, pattern) {
+				return true
+			}
+		}
+		return false
+	}
+
 	domains := client.GetListOfDomains()
 	for _, domain := range domains {
 		for _, record := range client.GetRecords(domain) {
-			if record.Type == "A" {
-				fmt.Printf("%40s  %s", record.FullName, colorize(textChecking, colorCyan))
-				result, color := getExpiry(record.FullName)
-				if len(result) < len(textChecking) {
-					result += strings.Repeat(" ", len(textChecking)-len(result))
-				}
-				fmt.Print("\r")
-				fmt.Printf("%40s  %s", record.FullName, colorize(result, color))
-				time.Sleep(300 * time.Millisecond)
-				fmt.Print("\n")
+			if !match(record.FullName) || record.Type != "A" {
+				continue
 			}
+			fmt.Printf("%40s  %s", record.FullName, colorize(textChecking, colorCyan))
+			result, color := getExpiry(record.FullName)
+			if len(result) < len(textChecking) {
+				result += strings.Repeat(" ", len(textChecking)-len(result))
+			}
+			fmt.Print("\r")
+			fmt.Printf("%40s  %s", record.FullName, colorize(result, color))
+			time.Sleep(300 * time.Millisecond)
+			fmt.Print("\n")
 		}
 	}
 }
