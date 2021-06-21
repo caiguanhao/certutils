@@ -44,13 +44,13 @@ func main() {
 	flag.Usage = func() {
 		fmt.Println("Usage of chkcert [OPTIONS] [PATTERNS...]")
 		fmt.Println(`
-  This utility makes TLS connections to all your domains, checks the
-  certificates' expiration dates and lists how many days left until expiration
-  date.
+This utility makes TLS connections to all your domains, checks the
+certificates' expiration dates and lists how many days left until expiration
+date.
 
 PATTERNS: Optional. Only check domains contains one of specific strings.
 
-Options:`)
+OPTIONS:`)
 		flag.PrintDefaults()
 	}
 	flag.Parse()
