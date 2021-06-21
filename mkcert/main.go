@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -20,35 +21,38 @@ var (
 	debug  bool
 	dryRun bool
 	email  string
+
+	secondsToWait int
+	shouldClean   bool
 )
 
 func main() {
 	flag.BoolVar(&debug, "debug", false, "show more info")
 	dnsType := flag.String("dns", "alidns", "can be alidns, cloudflare")
-	wait := flag.Int("wait", 10, "seconds to wait for dns record to take effect")
+	flag.IntVar(&secondsToWait, "wait", 10, "seconds to wait for dns record to take effect")
 	flag.BoolVar(&dryRun, "dry-run", false, "dry-run certbot, but dns records will still be modified")
 	flag.StringVar(&email, "email", "a@a.com", "email for certbot")
-	clean := flag.Bool("clean", false, "remove acme challenge txt records for domain and exit")
+	flag.BoolVar(&shouldClean, "clean", false, "remove acme challenge txt records for domain and exit")
+	flag.Usage = func() {
+		fmt.Println("Usage of mkcert [OPTIONS] [NAMES...]")
+		fmt.Println(`
+This utility obtains certbot's (Let's Encrypt) wildcard certificates by
+updating DNS TXT records and answering stupid certbot questions for you.
+
+NAMES: Provide at least one domain. All domain names must start with "*.".
+
+NOTE: You may be [rate-limited](https://letsencrypt.org/docs/rate-limits/)
+if you are going to make many certs with the same IP address.
+
+NOTE: Certbot runs in a Docker container, the certificate files
+("example.com.cert" and "example.com.key") will be copied from the container to
+the working directory (will be overwritten without prompt if same file exists).
+If you still need your old certificate files, please backup first.
+
+OPTIONS:`)
+		flag.PrintDefaults()
+	}
 	flag.Parse()
-
-	if flag.NArg() == 0 {
-		log.Fatal("please provide wildcard domain name like this: *.example.com")
-	}
-
-	target := flag.Arg(0)
-	if strings.Count(target, "*") == 0 {
-		target = "*." + target
-		fmt.Printf(`Did you mean "%s"? (Y/n) `, target)
-		var answer string
-		fmt.Scanln(&answer)
-		answer = strings.ToLower(strings.TrimSpace(answer))
-		if answer != "" && answer != "y" {
-			log.Fatal("Aborted")
-			return
-		}
-	} else if strings.Count(target, "*") > 1 || !strings.HasPrefix(target, "*.") {
-		log.Fatal("Error: domain name must start with one '*.'")
-	}
 
 	var client dns.DNS
 	if *dnsType == "alidns" {
@@ -59,6 +63,38 @@ func main() {
 		log.Fatal("Error: bad dns type")
 	}
 
+	targets := flag.Args()
+
+	if len(targets) == 0 {
+		log.Fatal("please provide wildcard domain name like this: *.example.com")
+	}
+
+	for i, target := range targets {
+		if strings.Count(target, "*") == 0 {
+			targets[i] = "*." + target
+			fmt.Fprintf(os.Stderr, `Did you mean "%s"? (Y/n) `, targets[i])
+			var answer string
+			fmt.Scanln(&answer)
+			answer = strings.ToLower(strings.TrimSpace(answer))
+			if answer != "" && answer != "y" {
+				log.Fatal("Aborted")
+				return
+			}
+		} else if strings.Count(target, "*") > 1 || !strings.HasPrefix(target, "*.") {
+			log.Fatalf("Error: domain name %s must start with one '*.'", target)
+		}
+	}
+
+	for i, target := range targets {
+		if i > 0 {
+			log.Println(strings.Repeat("=", 40))
+		}
+		get(client, target)
+	}
+}
+
+func get(client dns.DNS, target string) {
+	log.Println("processing", target)
 	targetWithoutWildcard := strings.TrimPrefix(target, "*.")
 	acme := strings.Replace(target, "*", "_acme-challenge", 1)
 	domains := client.GetListOfDomains()
@@ -76,7 +112,7 @@ func main() {
 
 	log.Println("root domain:", root)
 
-	if *clean {
+	if shouldClean {
 		for _, id := range client.GetRecordIdsFor(root, acmeWithoutRoot, "TXT") {
 			log.Println("deleting TXT record with id", id)
 			client.DeleteRecord(root, id)
@@ -114,8 +150,8 @@ func main() {
 		id := client.AddNewRecord(root, acmeWithoutRoot, "TXT", challenge)
 		log.Println("new record has been created, id:", id)
 	}
-	log.Println("wait", *wait, "seconds for dns records to take effect")
-	time.Sleep(time.Duration(*wait) * time.Second)
+	log.Println("wait", secondsToWait, "seconds for dns records to take effect")
+	time.Sleep(time.Duration(secondsToWait) * time.Second)
 	c.continueChan <- true
 	if !dryRun {
 		log.Println("waiting cert files")
@@ -126,7 +162,7 @@ func main() {
 	}
 	<-c.doneChan
 	removeContainer(containerId)
-	log.Println("done")
+	log.Println("done:", target)
 }
 
 func writeFile(file string, content []byte) {
