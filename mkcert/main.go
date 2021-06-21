@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"bytes"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -35,8 +36,18 @@ func main() {
 	}
 
 	target := flag.Arg(0)
-	if strings.Count(target, "*") != 1 || !strings.HasPrefix(target, "*.") {
-		log.Fatal("domain name should contain one *. prefix")
+	if strings.Count(target, "*") == 0 {
+		target = "*." + target
+		fmt.Printf(`Did you mean "%s"? (Y/n) `, target)
+		var answer string
+		fmt.Scanln(&answer)
+		answer = strings.ToLower(strings.TrimSpace(answer))
+		if answer != "" && answer != "y" {
+			log.Fatal("Aborted")
+			return
+		}
+	} else if strings.Count(target, "*") > 1 || !strings.HasPrefix(target, "*.") {
+		log.Fatal("Error: domain name must start with one '*.'")
 	}
 
 	var client dns.DNS
@@ -45,7 +56,7 @@ func main() {
 	} else if *dnsType == "cloudflare" {
 		client = dns.Cloudflare{}
 	} else {
-		log.Fatal("bad dns type")
+		log.Fatal("Error: bad dns type")
 	}
 
 	targetWithoutWildcard := strings.TrimPrefix(target, "*.")
@@ -59,7 +70,7 @@ func main() {
 		}
 	}
 	if root == "" {
-		log.Fatalln("you don't have root domain for", target)
+		log.Fatalln("Error: you don't have root domain for", target)
 	}
 	acmeWithoutRoot := strings.TrimSuffix(strings.TrimSuffix(acme, root), ".")
 
