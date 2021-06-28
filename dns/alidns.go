@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"os/exec"
+	"strconv"
 )
 
 type (
@@ -37,8 +38,13 @@ func (_ Alidns) GetListOfDomains() []string {
 	return domains
 }
 
-func (_ Alidns) GetRecords(domain string) (records []Record) {
-	cmd := exec.Command("aliyun", "alidns", "DescribeDomainRecords", "--DomainName", domain)
+func (a Alidns) GetRecords(domain string) []Record {
+	return a.getRecords(domain, 1)
+}
+
+func (a Alidns) getRecords(domain string, page int) (records []Record) {
+	cmd := exec.Command("aliyun", "alidns", "DescribeDomainRecords",
+		"--DomainName", domain, "--PageNumber", strconv.Itoa(page))
 	out, err := cmd.Output()
 	if err != nil {
 		log.Fatal(err)
@@ -52,6 +58,9 @@ func (_ Alidns) GetRecords(domain string) (records []Record) {
 				Value    string
 			}
 		}
+		PageNumber int
+		PageSize   int
+		TotalCount int
 	}
 	err = json.Unmarshal(out, &result)
 	if err != nil {
@@ -69,6 +78,10 @@ func (_ Alidns) GetRecords(domain string) (records []Record) {
 			FullName: fullName,
 			Content:  d.Value,
 		})
+	}
+	totalPages := result.TotalCount/result.PageSize + 1
+	if result.PageNumber < totalPages {
+		records = a.getRecords(domain, result.PageNumber+1)
 	}
 	return
 }
