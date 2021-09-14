@@ -179,7 +179,7 @@ func writeFile(file string, content []byte) {
 func newContainer(domain string) string {
 	domainWithoutWildcard := strings.TrimPrefix(domain, "*.")
 	command := []string{
-		"docker", "create", "-i", "certbot/certbot", "certonly", "--manual",
+		"docker", "create", "-i", "certbot/certbot:v1.10.0", "certonly", "--manual",
 		"--preferred-challenges=dns", "--email", email,
 		"--server", "https://acme-v02.api.letsencrypt.org/directory",
 		"--agree-tos", "-d", domain, "-d", domainWithoutWildcard,
