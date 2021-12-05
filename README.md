@@ -12,7 +12,7 @@ Make sure you have installed:
 
 - [aliyun-cli](https://github.com/aliyun/aliyun-cli) and/or [cloudflare](https://github.com/caiguanhao/cloudflare)
 - docker
-- docker pull certbot/certbot
+- docker pull certbot/certbot:v1.10.0
 
 Note: You may be [rate-limited](https://letsencrypt.org/docs/rate-limits/) if you are going to make many certs with the same IP address.
 
