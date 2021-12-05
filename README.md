@@ -14,7 +14,13 @@ Make sure you have installed:
 - docker
 - docker pull certbot/certbot:v1.10.0
 
-Note: You may be [rate-limited](https://letsencrypt.org/docs/rate-limits/) if you are going to make many certs with the same IP address.
+Note: You may be [rate-limited](https://letsencrypt.org/docs/rate-limits/) if
+you are going to make many certs with the same IP address.
+
+If your have applied too many certs using the same account, then your account
+might be blocked. You can use `--email` option to use new account.
+
+To check for errors, run `docker logs` on the newly created container.
 
 ## Usage
 
