@@ -275,6 +275,10 @@ func (c *certbot) start(containerId, acme string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
 	err = cmd.Start()
 	if err != nil {
 		log.Fatal(err)
@@ -315,8 +319,16 @@ func (c *certbot) start(containerId, acme string) {
 			}
 		}
 	}
+	stderrBytes, _ := io.ReadAll(stderr)
 	err = cmd.Wait()
 	if err != nil {
+		stderr := strings.TrimSpace(string(stderrBytes))
+		if stderr != "" {
+			lines := strings.Split(stderr, "\n")
+			for _, line := range lines {
+				log.Println("\x1b[31mSTDERR:", line, "\x1b[0m")
+			}
+		}
 		log.Fatal(err)
 	}
 	if success {
