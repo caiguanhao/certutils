@@ -81,7 +81,7 @@ func (a Alidns) getRecords(domain string, page int) (records []Record) {
 	}
 	totalPages := result.TotalCount/result.PageSize + 1
 	if result.PageNumber < totalPages {
-		records = a.getRecords(domain, result.PageNumber+1)
+		records = append(records, a.getRecords(domain, result.PageNumber+1)...)
 	}
 	return
 }

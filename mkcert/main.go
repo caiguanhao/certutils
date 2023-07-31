@@ -70,6 +70,7 @@ OPTIONS:`)
 	}
 
 	for i, target := range targets {
+		target = strings.TrimRight(target, ".")
 		if strings.Count(target, "*") == 0 {
 			targets[i] = "*." + target
 			fmt.Fprintf(os.Stderr, `Did you mean "%s"? (Y/n) `, targets[i])
