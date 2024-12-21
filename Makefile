@@ -1,13 +1,13 @@
 all: mkcert/mkcert upcert/upcert getcert/getcert
 
 mkcert/mkcert: mkcert/*.go
-	go build -v -o mkcert/mkcert ./mkcert
+	(cd mkcert && go build -v -o mkcert)
 
 upcert/upcert: upcert/*.go
-	go build -v -o upcert/upcert ./upcert
+	(cd upcert && go build -v -o upcert)
 
 getcert/getcert: getcert/*.go
-	go build -v -o getcert/getcert ./getcert
+	(cd getcert && go build -v -o getcert)
 
 update_getcert:
 	GOOS=linux GOARCH=amd64 go build -v -o getcert/getcert ./getcert
